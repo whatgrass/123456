@@ -1,124 +1,135 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>實驗二：語意飽和（水果）</title>
-
-  <!-- jsPsych CSS -->
-  <link href="https://unpkg.com/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>字義飽和實驗</title>
+<link href="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" type="text/css"/>
+<style>
+body { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; background: #f7f7f9; color: #222; }
+.container { max-width: 800px; margin: 0 auto; padding: 20px; }
+.stimulus { font-size: 64px; text-align: center; padding: 120px 20px; }
+.test .category { text-align: center; font-size: 32px; margin-bottom: 20px; }
+.targets { display: flex; justify-content: center; gap: 40px; font-size: 28px; margin-bottom: 14px; }
+.prompt { text-align: center; font-size: 16px; color: #555; }
+.fixation { font-size: 48px; text-align: center; padding: 120px 20px; }
+.summary { max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
+.summary h2 { margin-bottom: 8px; }
+.summary table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+.summary th, .summary td { border: 1px solid #ddd; padding: 10px; }
+.summary th { background: #f0f0f0; }
+.btn { display: inline-block; padding: 10px 18px; border: 1px solid #333; background: #fff; cursor: pointer; margin-top: 18px; }
+</style>
 </head>
 <body>
+<div id="jspsych-target" class="container"></div>
+<script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/index.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@jspsych/plugin-html-keyboard-response@1.1.1/dist/index.browser.js"></script>
+<script>
+var trial_conditions = [
+  { category_word: "花", target1: "牡丹", target2: "玫瑰", correct_response: 'y', condition_type: "飽和-兩是" },
+  { category_word: "花", target1: "牡丹", target2: "車子", correct_response: 'n', condition_type: "飽和-一是一否" },
+  { category_word: "家具", target1: "桌子", target2: "椅子", correct_response: 'y', condition_type: "控制-兩是" },
+  { category_word: "家具", target1: "桌子", target2: "蘋果", correct_response: 'n', condition_type: "控制-一是一否" }
+];
 
-  <div id="jspsych-target"></div>
-
-  <!-- jsPsych 核心 -->
-  <script src="https://unpkg.com/jspsych@7.3.3/dist/index.browser.js"></script>
-
-  <!-- Plugins (正確版本 1.1.1) -->
-  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.1/dist/index.browser.js"></script>
-  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.1/dist/index.browser.js"></script>
-
-  <script>
-    /********************************************
-     * 初始化 jsPsych
-     ********************************************/
-    const jsPsych = initJsPsych({
-      display_element: "jspsych-target",
-      override_safe_mode: true,
-      on_finish: () => {
-        jsPsych.data.get().localSave("csv", "semantic_satiation_fruit.csv");
-      }
+var jsPsych = initJsPsych({
+  display_element: 'jspsych-target',
+  on_finish: function() {
+    var trials = jsPsych.data.get().filter({ phase: 'test' });
+    var acc = trials.count() ? Math.round(trials.filter({ correct: true }).count() * 100 / trials.count()) : 0;
+    var rtMean = Math.round(trials.select('rt').mean() || 0);
+    var condStats = {};
+    trials.values().forEach(function(d) {
+      var k = d.condition_type;
+      if (!condStats[k]) condStats[k] = { count: 0, correct: 0, rts: [] };
+      condStats[k].count += 1;
+      condStats[k].correct += d.correct ? 1 : 0;
+      condStats[k].rts.push(d.rt);
     });
-
-    let timeline = [];
-
-    /********************************************
-     * 指導語
-     ********************************************/
-    timeline.push({
-      type: jsPsychHtmlButtonResponse,
-      stimulus: `
-        <h2>實驗二：語意飽和（水果）</h2>
-        <p>接下來你會先看到「水果」反覆閃爍。</p>
-        <p>之後會看到詞語，請判斷是否為水果。</p>
-      `,
-      choices: ["開始"]
+    var rows = '';
+    Object.keys(condStats).forEach(function(k) {
+      var s = condStats[k];
+      var a = s.count ? Math.round(s.correct * 100 / s.count) : 0;
+      var m = s.rts.length ? Math.round(s.rts.reduce((p, c) => p + c, 0) / s.rts.length) : 0;
+      rows += '<tr><td>' + k + '</td><td>' + a + '%</td><td>' + m + ' ms</td></tr>';
     });
+    var html = '<div class="summary"><h2>實驗結束</h2><p>整體正確率：' + acc + '%</p><p>平均反應時間：' + rtMean + ' ms</p><table><thead><tr><th>條件</th><th>正確率</th><th>平均RT</th></tr></thead><tbody>' + rows + '</tbody></table><div><button class="btn" onclick="downloadcsv()">下載資料（CSV）</button></div><p style="margin-top:10px;">按任意鍵關閉頁面或重新整理以重跑</p></div>';
+    jsPsych.getDisplayElement().innerHTML = html;
+  }
+});
 
-    /********************************************
-     * 語意飽和誘發：水果閃 5 次
-     ********************************************/
-    for (let i = 0; i < 5; i++) {
-      timeline.push({
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<h1 style="font-size:60px;">水果</h1>`,
-        choices: "NO_KEYS",
-        trial_duration: 500
-      });
+function downloadcsv() {
+  var csv = jsPsych.data.get().csv();
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'semantic_satiation_data.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
-      timeline.push({
+var welcome = {
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: '<div style="text-align:center; padding: 60px 20px;"><h2>字義飽和實驗</h2><p style="margin-top:12px;">在每個區塊中，先重複看到主題詞 10 次，接著判斷兩個目標詞是否都屬於該主題詞。</p><p style="margin-top:12px;">按 Y 表示「是」、按 N 表示「否」。</p><p style="margin-top:24px; color:#666;">按任意鍵開始</p></div>',
+  choices: 'ALL_KEYS'
+};
+
+var block = {
+  timeline: [
+    {
+      timeline: [{
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: "",
-        choices: "NO_KEYS",
-        trial_duration: 300
-      });
+        stimulus: function() {
+          var w = jsPsych.timelineVariable('category_word');
+          return '<div class="stimulus">' + w + '</div>';
+        },
+        choices: 'NO_KEYS',
+        trial_duration: 500,
+        post_trial_gap: 50
+      }],
+      repetitions: 10
+    },
+    {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: function() {
+        var c = jsPsych.timelineVariable('category_word');
+        var t1 = jsPsych.timelineVariable('target1');
+        var t2 = jsPsych.timelineVariable('target2');
+        return '<div class="test"><div class="category">' + c + '</div><div class="targets"><div>' + t1 + '</div><div>' + t2 + '</div></div><div class="prompt">這兩個詞是否都屬於這個主題？按 Y=是 / N=否</div></div>';
+      },
+      choices: ['y','n'],
+      data: {
+        category_word: jsPsych.timelineVariable('category_word'),
+        target1: jsPsych.timelineVariable('target1'),
+        target2: jsPsych.timelineVariable('target2'),
+        correct_response: jsPsych.timelineVariable('correct_response'),
+        condition_type: jsPsych.timelineVariable('condition_type'),
+        phase: 'test'
+      },
+      on_finish: function(data) { data.correct = (data.response === data.correct_response); }
+    },
+    {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: '<div class="fixation">+</div>',
+      choices: 'NO_KEYS',
+      trial_duration: 1000
     }
+  ],
+  timeline_variables: trial_conditions,
+  randomize_order: false
+};
 
-    /********************************************
-     * 水果 / 干擾詞語
-     ********************************************/
-    const fruit_words = [
-      "芭樂","藍莓","草莓","香蕉","蓮霧","蘋果","柚子","橘子","榴槤","奇異果",
-      "火龍果","葡萄柚","李子","水蜜桃","龍眼","荔枝","木瓜","鳳梨","西瓜","葡萄",
-      "櫻桃","哈密瓜","柿子","楊桃","釋迦","蔓越莓","棗子","水梨","芒果","百香果","香瓜"
-    ];
+var end = {
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: '<div style="text-align:center; padding: 60px 20px;"><p>資料已整理於頁面結束畫面，可下載 CSV 檔。</p><p style="color:#666;">按任意鍵結束</p></div>',
+  choices: 'ALL_KEYS'
+};
 
-    const distractor_words = [
-      "雨傘","火車","鯨魚","筷子","銀河","眼鏡","沙漏","密碼","棉花糖","齒輪",
-      "地震","茶壺","衣櫃","星座","烏龜","廚房","影子","橡皮擦","雪人","時鐘",
-      "錢包","城堡","電梯","口琴","雲朵","書籤","鉛筆","宇宙","冰箱","風箏"
-    ];
-
-    let all_words = [];
-    fruit_words.forEach(w => all_words.push({ word: w, category: "fruit" }));
-    distractor_words.forEach(w => all_words.push({ word: w, category: "nonfruit" }));
-
-    /********************************************
-     * 20 個隨機 trials
-     ********************************************/
-    let trials = jsPsych.randomization.sampleWithoutReplacement(all_words, 20);
-
-    trials.forEach(item => {
-      timeline.push({
-        type: jsPsychHtmlButtonResponse,
-        stimulus: `<h1>${item.word}</h1>`,
-        choices: ["是（水果）", "不是（非水果）", "不確定"],
-        data: { stimulus: item.word, category: item.category },
-        on_finish: function(data) {
-          if (data.response == 0) data.response_label = "是";
-          if (data.response == 1) data.response_label = "不是";
-          if (data.response == 2) data.response_label = "不確定";
-
-          data.correct =
-            (item.category == "fruit" && data.response == 0) ||
-            (item.category == "nonfruit" && data.response == 1);
-        }
-      });
-    });
-
-    /********************************************
-     * 結束畫面
-     ********************************************/
-    timeline.push({
-      type: jsPsychHtmlButtonResponse,
-      stimulus: `<h2>實驗結束，感謝你的參與！</h2>`,
-      choices: ["完成"]
-    });
-
-    jsPsych.run(timeline);
-  </script>
-
+jsPsych.run([welcome, block, end]);
+</script>
 </body>
 </html>
-
